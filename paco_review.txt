@@ -1,0 +1,414 @@
+We thank the authors for their submission to Parallel Computing. Overall, the reviewers were pleased with your submission. However, they ask for modifications to the writing of the document for clarity and for grammar. Please address these comments and resubmit.
+
+Reviewer #1: Paper Summary:
+The authors investigate usage of AVX and SVE vector intrinsics to improve MPI reduction operation performance in Open MPI.
+
+Pros:
+- Good explanation of the vector capabilities and how they are integrated into the MPI implementation.
+- Comprehensive evaluation includes tool-based instruction measurements, micro benchmarks, and real application evaluation.
+- The usage of vector intrinsics is packaged nicely by MPI, making it an obvious win for users.
+
+Cons:
+The paper is inconsistent in the way it treats AVX and SVE. A lot of SVE content feels like it was added late, and does not flow as well. I have noted instances of inconsistency, as well as other minor issues I have with the paper. I believe these could be handled in a minor revision.
+
+- at the end of section 2.1, it is stated that you work focuses on AVX-512 for reductions. no mention of SVE.
+- section 3.1 contains a lot of redundant explanation of AVX already explained in the introduction.
+- section 3.3 only lists intrinsic APIs for AVX-512 functions.
+- section 3.6 is a single paragraph to explain the SVE module vs. over a page of AVX. does SVE support all reduction operations?
+- section 4.1 you state that memcpy represents peak memory bandwidth, but the AVX-512 reduction actually takes less time that memcpy in your chart. how can that be?
+- When describing overall speedup in your experiments, AMD and ARM platforms are 5 times faster, which Intel is described as an order of magnitude faster. There should be a more precise description of the Intel platform speedup.
+- At the end of section 7, you state that the performance benefit increases with more processes/nodes "because with more MPI processes participated in the reduction operation, the fact that each one of them is simultaneously using our AVXs optimized Open MPI operations drives up the overall application performance." I do not understand what you are saying. Does the reduction work go up with more processes/nodes? What about communication? Why are only AVXs mentioned?
+
+Review Summary:
+The work in this paper is interesting and worthy of being published. However the paper needs work to fix inconsistencies and shortcomings in the explanation of the benefits to their approach.
+
+
+Reviewer #2: In the paper "Using Long Vector Extensions for MPI Reductions", the
+authors present general background on using vector instructions for
+numerical computing, particularly the multiple generations AVX
+instruction sets from Intel, the SVE instruction sets from AMD, and
+the vector instructions on Arm chips.  Using vector instructions is
+directly applicable to MPI reduction operations, and the authors both
+study how to utilize them as well as implement a flexible scheme to
+select which vector instruction set to utilize at run time (vs. solely
+at compile time).  The work was implemented in Open MPI, and a series
+of experiments were conducted to measure the efficiency of these
+vector instructions compared to non-vector instructions.  As expected,
+sizable performance improvements were shown when using the vectored
+instructions.
+
+This paper represents solid work, and deserves to be published.  It
+shows careful detail in how the topic was studied, how the algorithms
+were designed and implemented in Open MPI, and finally how the work
+was made usable by the public (who don't know/care how vector
+operations work, nor the subtleties and limitations of instruction set
+selection based on hardware capabilities) with the "examine the CPU
+capabilities at run time" scheme.
+
+That being said, there are a number of ways that this paper can be
+improved.  In no particular order:
+
+- Overall, the paper needs English grammar proofing.  Since this is an
+  English language journal, it should reflect correct English grammar
+  construction and usage.  Proofing from an experienced editor would
+  greatly benefit this paper by cleaning up unclear explanations,
+  awkward descriptions, etc.
+
+- In the 2nd paragraph of section 1, "Over the last decade, the
+  difference between..."  The difference of *what* is not clearly
+  stated.  It just says that there is an *increase* -- but of what?
+  Assumedly performance of some metric, but nothing is specified.
+
+- There are several instances in the paper of using superlatives,
+  e.g., "It offers the highest degree of compiler support..."  Using a
+  superlative in a scientific paper is an extremely strong statement.
+  Not only must such claims be objectively quantified, they must also
+  be detailed with exactly which metrics were measured to determine
+  that they represent "the highest".
+
+- Similarly, please avoid subjective claims with flowery adjectives.
+  "...the highest degree of compiler support by including a unique
+  level of richness in designing the instructions."  Is it really
+  unique?  What exactly is meant by "richness"?  Etc.  Examples later
+  in the paper include such phrases as "a vibrant mix", "unprecedented
+  performance", etc.  Avoid using constructions like these; this is a
+  scientific paper, not an advertisement.
+
+- Both enumerated points 1 and 2 under Figure 1 seem similar: they
+  both are about "more types of carried loop dependencies".  Please
+  make these two bullets more different from each other (i.e., worthy
+  of being independent bullets).
+
+- Bottom paragraph in 1st column on page 2 contradicts itself with the
+  colloquialisms used: "In particular, all MPI aspects are essential
+  to some computation domains."  I.e., "In particular" indicates that
+  you're going to be specific or precise about something.  But then
+  the rest of the sentence is vague and amorphous, saying nearly
+  nothing.
+
+- Largest paragraph in column 2 on page 2, "the most expensive step in
+  the learning process, the reduction of the gradients, is entirely
+  dependent..."  That's a very, very strong statement ("entirely").
+  You should probably soften this statement a bit -- it's ok to say
+  that the reduction of gradients is perhaps the most time consuming
+  part of each iteration, but to say "entirely" (a superlative)
+  indicates that *nothing* else happens except the reduction of
+  gradients.
+
+- Later in the same paragraph, the word "reduced" is used, but it used
+  with the meaning of "diminished" as opposed to "mathematically
+  combined".  The paper is nominally about the 2nd flavor of
+  "reductions" (i.e., mathematical combinations); it's a little
+  confusing to see the word "reduce" used with its other definition
+  here in the same paper.  For the sake of avoiding confusion, it
+  would probably be best to not use "reduced" in this specific case.
+
+- Throughout the paper, the term "MPI operation" is used.  I think the
+  authors should probably s/MPI operation/MPI reduction operation/g
+  throughout the paper, because in MPI-4, the term "MPI operation" has
+  a very specific meaning (I know this paper is being published before
+  MPI-4 is published, but this paper will continue to be read in a
+  world where MPI-4 [or beyond] is the standard, so it would be good
+  to pre-emptively not be at odds with a definition that is firmly
+  established in MPI-4).  MPI-4 6.9.2 defines "Predefined Reduction
+  Operations", to include constants such as MPI_MIN, MPI_MAX, MPI_SUM,
+  etc.  I believe that "reduction operations" are what the authors are
+  specifically referring to, and should therefore strive to
+  distinguish the term from the "MPI operation" term, which has a
+  different meaning.
+
+- Bullets 1 and 2 in the 1st column on page three should use proper
+  parallel grammatical construction.
+
+- Bullet 2 speaks of "new reduction operations".  This paper does not
+  introduce new MPI reduction operations: it introduces new
+  implementations of existing MPI reduction operations.  Please be
+  specific and clear about this point.
+
+- In bullet 2, it says "Furthermore, our implementation provides
+  useful insight..."  This seems like the goal of both points #1 and
+  #2 -- not #2 alone.
+
+- I notice that Open MPI itself is not cited in the bibliography.
+  Please use the canonical Open MPI bibtext citation that is provided
+  on the Open MPI web site.
+
+- Page 3 column 2 uses the abbreviation "Intel SKL" -- what is that?
+
+- Column 2 page 4 says "a compact representation of a large
+  displacement".  What exactly is meant by this -- some kind of
+  non-integer representation?
+
+- Column 2 page 4 says "For SSE and AVX, programs will suffer from
+  performance penalties once mix them".  First, please fix the grammar.
+  Second, please explain what is meant by this -- it's an odd
+  statement with no backing explanation or rationale.
+
+- Section "3.3" is entitled "intrinsics".  Do you mean functions that
+  are intrinsic to compilers?  Or do you mean something else?  This is
+  not clearly explained.
+
+- The 1st paragraph in 3.3 says "These types empower the
+  programmer..."  Do you mean compiler intrinsic functions, or
+  compiler intrinsic types, or both, or something else?
+
+- Please do not use the abbreviation "OMPI" for "Open MPI" -- please
+  use the full name "Open MPI".
+
+- top paragraph column 1 page 5: "In summary, the intrinsic function
+  allows SIMD instruction to be manipulated faster, more accurately,
+  and more effectively than writing lower-level code."  I think the
+  authors are trying to say that compiler intrinsic functions make
+  programming easier according to several metrics.  But the way that
+  that statement is currently phrased is categorically false.
+  Specifically: using a compiler intrinsic function is *not* the only
+  way to get fast, accurate, and effective (whatever that means)
+  vector-based applications.
+
+- The wrong latex start quotes are used throughout the paper.  Use ``
+  instead of ".
+
+- In the 2nd set of instructions described in column 2 page 5
+  (_m512i_mm512_<op>...), it says that the results are stored in the
+  destination.  What exactly is the destination -- is it b?  That is
+  not specified.  Or is the destination implicitly (or explicitly?)
+  specified some other way?
+
+- In section 3.4, citation 39 is listed in conjunction with Open MPI's
+  modular component architecture.  But citation 39 has to do with
+  runtime failure detection.  Please fix.
+
+- Figure 3: there are several unexplained boxes in the figure.  What
+  is "Grpcomm"?  What is "direct"?  What is "Extend Copy"?  Do these
+  have to do with the purple "RM" box, which is loosely lined up with
+  these blocks?
+
+  Knowing what I know about Open MPI, I don't think that showing any
+  of these blocks adds value to this paper -- the runtime manager side
+  of Open MPI has very little to do with the AVX/SSE work from this
+  paper.  Specifically: I would not include labels for "Grpcomm",
+  "direct", or "Extend Copy" in the figure.
+
+- I do not understand figure 4: it appears to be some kind of limited
+  flow chart, but not all possible paths are shown.  For example,
+  there are several paths/arrows missing (e.g., *some* "no" / not
+  supported paths are shown, but not all of them.  Why?).  Also, what
+  happens when multiple AVX/SSE flags are supported -- do *all* three
+  of the leaf boxes get used?  Please clarify this figure, e.g., by
+  using commonly-accepted flow chart notation.
+
+- In the large paragraph in column 2 on page 5, the authors state that
+  using compiler intrinsics is time-consuming and error prone (which
+  is opposite of what was stated in section 3.3), but then go on to
+  say that the work was done with compiler intrinsics anyway (even
+  though it is error prone).  Please explain why -- "to maximize
+  performance" is not enough explanation as to why you use a technique
+  that you explicitly stated was difficult and bad.
+
+- I have many questions about Algorithm 1 (generally, the same
+  questions apply to Algorithm 2):
+
+  - Parameters:
+
+    - I would strongly suggest describing the input parameters first
+      in your list.  This lets the reader correlate the values that
+      they know/understand (i.e., the parameters to ReductionOp)
+      before trying to correlate the variable names you list with the
+      values used in inner loops, etc.
+
+    - Why isn't the datatype a parameter of ReductionOp?  I know this
+      is pseudo-code, but that's a necessary input to the algorithm,
+      right?
+
+    - "sizeof_type -> Number of bytes of the type in the inbuf /
+      inout_buf".  How exactly is this value relevant?  I do not
+      understand how the ratio of bytes in the inbuf to the inout buf
+      would be useful here.
+
+  - Line 2: what does the notation "vector_length(512)" represent?  Is
+    that supposed to be a constant 512, or is there a multiplier or
+    divisor involved?  The value to the right of the "/" operator
+    appears to be a number of bits (assuming sizeof_type is actually a
+    number of bytes, not a ratio as denoted in its description).
+    Does that mean "vector_length(512)" is a constant 512?  If so, I
+    do not understand what the "vector_length(...)" notation is
+    supposed to mean.  Should vector_length be a simple variable, and
+    perhaps an input parameter to RedunctionOp?
+
+  - Line 4: I do not understand the loop "for k <- types_per_step to
+    count".  Example: I call this ReductionOp with 17,179,869,184
+    (i.e., 2^34, or 8 billion+) of MPI_INT, where sizeof(int) (in C)
+    is 4 bytes.  This would therefore represent 32 gigabytes of data.
+
+    Assuming that:
+    - sizeof_type = 4 (i.e., C sizeof(int) == 4)
+    - count = 2^34
+    - types_per_step = 512 / (8 * 4) = 16
+
+    This means that K will start at 16 and increment by 1 until it
+    gets to 2^34 (i.e., 16, 17, 18, 19, ..., 2^34).  Shouldn't the
+    loop be from 0 to count, stepping by types_per_step (0, 16, 32,
+    64, ..., 2^34-16)?
+
+  - Additionally, doesn't some kind of offset need to be denoted in
+    lines 5-8, and 13-16, and 21-24, and 29?
+
+- Figure 5 is also confusing.
+
+  - Why is there only one (small) blue box to the left, but there are
+    2 red (large) boxes and 2 (large, equally-sized-to-the-blue boxes)
+    yellow boxes per row?
+
+  - Do the blue, red, and yellow boxes somehow interact with each
+    other?  Why is there a dotted line between the red and the yellow,
+    but not between the blue and the red?
+
+  - What exactly are you trying to show with this figure?  I'm afraid
+    I cannot make any sense of what the authors are trying to convey.
+    Please find a way to make the knowledge you are trying to convey
+    more clear, either with symbology and/or in words.
+
+- Last paragraph 2nd column page 6: "Eventually, we reach the last
+  section of the optimization".  Suggest replacing "optimization" with
+  "reduction operation".
+
+- Table 2:
+
+  - What is AVX512BW vs. AVX512F?  I.e., why do we need to see this in
+    the table (without any further explanation)?
+
+  - Why are there 2 columns of values?  If it's just to make the table
+    more compact (vs. a vertically-longer table with 1 data value
+    column), then please make the "CPU flags and op_avx_support_value"
+    heading be centered above both data columns.
+
+  - Are the SSE values also in the opal_avx_support_value flags?  If
+    so, that is worth explaining because it's SSE values in a variable
+    that has the name "avx" in it.
+
+- Last paragraph column 1 page 7: "Table 1 shows the variety of
+  MPI_Types and MPI_Ops..." There is no such thing as an "MPI_Type" --
+  there are only MPI_Datatypes.  Additionally, table one shows neither
+  MPI_Datatypes nor MPI_Ops.  It shows what appear to be C datatypes
+  and abbreviations for MPI reduction operation handle names.  Please
+  make the text and table 1 consistent -- preferably by using actual
+  full MPI handle names.
+
+- Algorithm 2: as stated above, many of the same questions from
+  Algorithm 1 apply to Algorithm 2, too.
+
+- First sentence of column 1 page 8: "...revision #75a539".  Please
+  say "git commit hash 75a539", and cite the Open MPI github git
+  repository for which this hash applies (a git hash without a
+  corresponding git repository is meaningless).
+
+- 3rd paragraph 1st column page 8: "For the experiments, we flushed
+  cache to ensure..."  Please explain this further.  Are you flushing
+  all memory caches before starting the overall experiment?  Are you
+  flushing just the output memory before each iteration?  Are you
+  flushing the input memory before each iteration?  Are you flushing
+  both the input and the output memory before each iteration?  Or
+  something else...?  Please be precise.
+
+- For all result figures (e.g., figures 6 and 7): there appear to be
+  symbols on the graphs that are not explained -- stars, circles,
+  arrows, etc.  What are these, and how do they relate to the results?
+
+- There's a anomalous purple arrow at x=4K in Figure 6.  Other than
+  not knowing what the arrow denotes, it *appears* that the AVX512
+  version was substantially slower at 4K than all the other methods.
+  Please explain.
+
+- Last paragraph in 4.1: The figures (E.g., figs 6 and 7) are showing
+  operation wall clock execution time, not memory bandwidth.  Yes,
+  these values may be closely related, but they are absolutely not the
+  same thing.  Please clarify the text to distinguish between these
+  things.
+
+- Last paragraph in 4.2: "... our AVX2 reduction operations perform
+  five times faster than the default operations in Open MPI for all
+  sizes."  This is a very strong statement to make, and difficult to
+  quantify without seeing the actual numbers -- all we see are small
+  graphs (e.g., figure 8) with unexplained data point symbols.
+  Indeed, there are no discernible purple data points on figure 8
+  below 64K, so it's hard to understand this statement.  Can you show
+  a table with some actual numbers to back up this claim?
+
+- A similar statement is made in column 1 page 9 about SVE512, but
+  there is no discernible purple line at 1K in figure 9.
+
+- Please explain the X axis in Figures 10 and 11.  The names listed
+  are assumedly PAPI counters, but they do not seem to match the order
+  of description in the text, nor does the number of X axis labels
+  between Figures 10 and 11 match what is described in the text.
+  Please explain what these X value labels are (i.e., what those PAPI
+  counters are counting), and why they are worth showing in figures 10
+  and 11.
+
+- Section 6: does the fact that 24 processes were used imply that this
+  was run on a single machine?  That is worth clarifying.
+
+- Also in section 6: "(option "op ^ AVX")".  What exactly does this
+  mean?  Is that some kind of abbreviated reference to Open MPI's MCA
+  command line notation?
+
+- The text in section 6 says that the "latency" of the loop is 700.
+  - What exactly do you mean by latency of a loop?  Do you mean the
+    wall clock execution time of a single iteration of that loop?  Is
+    the value shown the maximum loop iteration time, the average loop
+    iteration time, ...?
+  - There is no Y value of 700 in Figure 12.
+
+- The last sentence of section 6: "With the most optimal combination
+  of AVX and AVX2 and AVX512, we accomplish a speedup of 14.7%" What
+  exactly does this mean -- are you using AVX / AVX2 / AVX512 for
+  different types and/or sizes of MPI reduction operations?  So far in
+  the text, there has been no discussion of mixing multiple types of
+  AVX operations in a single application, other than handling the
+  "left over" data, as shown in Algorithms 1 and 2. This sentence
+  therefore requires explanation.
+
+- Figure 12 would benefit from having data labels shown in the graph.
+
+- The caption of Figure 13 describes the data in the opposite order in
+  which the graph data is shown.  The text says "optimized Open MPI
+  and default Open MPI", but the blue data (to the left) is default
+  Open MPI, and the brown data (to the right) is optimized Open MPI.
+  Please switch the caption text to match the order in which the data
+  is presented in the graph.
+
+- Citation 20 is not sufficient for the MPI standard.  Please use a
+  proper citation for the MPI standard.
+
+- There are numerous cases of incorrectly non-capitalized acronyms in
+  the bibliography.  Please correctly capitalize all acronyms in the
+  bibliography.
+
+This may seem like a lot of nit picking, and I admit that it is.
+Honestly, I think this is good research work, but the text needs to be
+cleaned up before publication.  Parallel Computing is a prestigious
+journal, and the papers included in it should reflect high quality
+work and writing.  This paper clearly shows high quality work; its
+writing needs to be improved a bit, and then I think it will be an
+excellent candidate for publication in Parallel Computing.
+
+Please note that I offer all of the above as constructive criticism in
+an attempt to help convey the excellent work and gained wisdom from
+this research and contribute to the state of the art.
+
+I sign all of my reviews; please feel free to contact me about any
+part of this review.
+
+Jeffrey M. Squyres, Ph.D.
+Cisco Systems, Inc.
+jsquyres@cisco.com
+
+
+
+Reviewer #3: This paper is an extension of the EuroMPI2020 manuscript "Using Advanced Vector Extensions AVX-512 for MPI Reductions". Authors have significantly extended the scope of the previous EuroMPI paper by considering an Arm SVE-based implementation of their SIMD-based MPI reductions. It is remarkable the fact that the authors' implementation leverages the vector-length agnostic aspect of SVE. Additionally, the authors consider two additional high-end systems, AMD Zen 2 and Arm A64FX, besides the Xeon architecture they used in the EuroMPI paper. The experimental campaign demonstrates consistent results accross three high-end systems two SIMD ISAs.
+
+As a minor comment, it would be great to cite some recent publications featuring long-vector architecutres like the one below:
+
+Constantino Gómez, Filippo Mantovani, Erich Focht, and Marc Casas. 2021. Efficiently running SpMV on long vector architectures. In Proceedings of the 26th ACM SIGPLAN Symposium on Principles and Practice of Parallel Programming (PPoPP '21). Association for Computing Machinery, New York, NY, USA, 292-303. DOI:https://doi.org/10.1145/3437801.3441592
+
+Although the paper above is not directly related to the main purpose of this manuscript, citing some papers exploiting long vector architectures may help readers to understand more this kind of systems.

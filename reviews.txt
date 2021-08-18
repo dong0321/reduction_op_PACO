@@ -1,0 +1,216 @@
+SUBMISSION: 11
+TITLE: Using Advanced Vector Extensions AVX-512 for MPI Reduction
+
+
+----------------------- REVIEW 1 ---------------------
+SUBMISSION: 11
+TITLE: Using Advanced Vector Extensions AVX-512 for MPI Reduction
+AUTHORS: Dong Zhong, Qinglei Cao, George Bosilca and Jack Dongarra
+
+----------- Overall evaluation -----------
+SCORE: 3 (strong accept)
+----- TEXT:
+This paper proposes an implementation of predefined MPI reduction operations using AVX, AVX2, and AVX-512 intrinsics to accelerate local computations, which directly benefits the cost of collective reductions. Accelerating MPI with low-level ISA extensions like 512-bits SIMD instructions is a very interesting and important endeavor, particularly because vector sizes will keep increasing in future hardware.
+
+The paper carries out its experimental campaign on an Intel Xeon Gold cluster. The evaluation demonstrates that AVX-512 optimized reduction operations achieve 10x performance benefits with respect to Open MPI default for MPI local reduction. The evaluation also includes an interesting experiment describing the control flow overhead of both the vectorized and the scalar codes. Real measurements show that the AVX-512 code has much less control and branching instructions.
+
+Although the manuscript is ready to be published, a very interesting extension would be considering different buffer sizes. Right now, the buffer size is 1MB, according to Figures 5 and 6. What would happen if you have a buffer size that fits in the register file? Would the performance difference between the vectorized and the scalar codes be even larger? Please consider this kind of experiments if you plan to extend this paper.
+
+Sometimes the paper looks like an Intel advertisement. Some adjectives like "vibrant" or "unprecedented" should be removed.
+
+Typo in Section 3.1: "YMM0âĂŞYMM15"
+
+Grammar issue: "Without Intel intrinsic was supported"
+
+
+
+----------------------- REVIEW 2 ---------------------
+SUBMISSION: 11
+TITLE: Using Advanced Vector Extensions AVX-512 for MPI Reduction
+AUTHORS: Dong Zhong, Qinglei Cao, George Bosilca and Jack Dongarra
+
+----------- Overall evaluation -----------
+SCORE: 2 (accept)
+----- TEXT:
+The paper "Using Advanced Vector Extensions AVS-512 for MPI Reductions" posits that using Intel's various AVX instruction sets for the vectorization of MPI reduction operations will result in performance gains compared to traditional scalar-based reduction operations.  This is not a revolutionary concept -- that's exactly what the AVX instruction sets are for -- but as the paper describes, the value of this work is to hide all the complexity of the complicated low-level AVX details from the application developer; make the use of performance-enhancing technologies (such as AVX) under the covers of the high-abstraction MPI API.
+
+The paper spends quite a bit of time explaining what AVX and vector operations are, and also explains the differences between the different generations of Intel's vector-based instructions sets.  A nod is also given to the equivalent ARM vector-based instruction sets, but this paper focuses on the Intel technologies.
+
+The authors expanded Open MPI to use AVX-based vector operations with the Intel compiler suite.  I could not find it explicitly stated (perhaps I missed it), but the text + figure 3 implies that the code will adapt itself at run time to the particular generation of Intel AVX instructions that are available on the computer on which it is run.
+
+The general algorithm for MPI vector-based operations is presented, and PAPI was used to measure both decreases in instruction set and branch operations when using the vector-based operations (as compared to scaler-based operations).  MPI_SUM and MPI_BAND operations were benchmarked with MPI_REDUCE_LOCAL, apparently showing performance benefits (more on this below).  Additionally, Horovod, a TensorFlow-based image processing application, was benchmarked with and without the AVX-based operations, and showed clear performance benefits of the AVX-based reductions.
+
+Overall, this is a great topic, and represents a solid incremental improvement of MPI technology.  It is an excellent idea that will almost certainly bring tangible performance benefits to MPI applications that rely on large MPI reductions.
+
+That being said, I have a few concerns about the paper.  In no particular order:
+
+- Minor (but important): the paper would benefit from a careful review proof read+revision.  There are numerous grammatical errors, typos/incorrect spelling autocorrections, and many oddities of expression that make the text hard to understand in some places.  I noted a few of the more egregious of these below, but did not cite the majority of them in this review.
+
+- Minor (but important): the writing style of the paper would benefit from less flowery descriptions and more of a focus on technical conveyance.  Don't use adjectives where none are required.  Don't make sweeping pronouncements or conclusions.  Tell the story of this work in a fact-based manner.
+
+- An admittedly subjective point: this paper feels a bit repetitive.  Some of the concepts feel overlapping and explained multiple times (particularly in the first six pages).  It *feels* like the explanations could be tighter, more crisp, and non-repetitive.  Again, this is just a feeling I get after reading the paper; it's not objective and I have no metrics to cite.  If the authors revise the text, this point might be worth considering.
+
+- Section 3.3 below figure 4: "Additionally, AVX-512 can perform scatter reduction operations with the accomplished support of predicate vector register."  What, precisely, does this mean?  I've read this sentence several times, and I'm still unable to glean its meaning.  Please re-write / explain what you're referring to.
+
+- The next sentence says "This profoundly expands the limitation of consecutive memory layout..."  I'm unable to understand what this means.  The words indicate that the whatever the prior sentence stated somehow greatly ***further limits*** something, but the context of the sentence seems to imply that the author meant exactly the opposite: that the ***restriction is loosened****.  Please re-write this section to be more clear about a) what the restriction is, and b) whether it is further restricted or loosened up.
+
+- I have a few questions about Algorithm 1.
+
+** line 2: "vector_length(512)".  Is this meant to be a function call?  I do not see "vector_length" as a pseudocode input anywhere, so this appears to be an external reference.  Where did 512 come from?  Is that an input, or a hard-coded value?  Is that specific to AVX-512, or does it also apply to AVX and AVX2?
+
+** line 2: the type (or MPI_Datatype?) does not seem to be an input to the algorithm.  Does that mean sizeof_type is the number of bytes of the type of the in_buf / inout_buf?  It strikes me that "type" (or sizeof_type?) might benefit from being listed as one of the values explained at the top of the algorithm (with the others).
+
+** In each of the 3 main compute blocks, doesn't there need to be an additive factor for each of in_buf and inout_buf?  E.g., in the first block (that is a loop over k), shouldn't in_buf/inout_buf have (vector_length*k) added to them?  Otherwise, you're repeating the operation on the same section of buffer K times.
+
+- Section 3.3, top of next-to-last paragraph, "...significant execution time is often spent in the prologue..."  I think the authors might have meant "epilogue"...?
+
+- Section 3.3: top of last paragraph, there is no such thing as an MPI_Type -- I think the authors meant MPI_Datatype.
+
+- Section 4: PAPI results are shown, but there is no explanation of the specific test case used to generate these numbers.  All that's mentioned is that Figure 5 is MPI_SUM and Figure 6 is MPI_BAND.  I need a bunch more information in order to scientifically replicate these graphs.  I realize the authors don't talk about their experimental setup until section 5, but perhaps that discussion should be moved back here so that the specific test case used to generate graphs 5 and 6 can be explained.  E.g., was it an MPI_REDUCE_LOCAL with MPI_SUM?  What kinds of datatypes, and what size buffer(s)?
+
+- Also, what exactly are the PAPI values that are cited on the X axis?  The authors felt important enough to cite these specific values -- what are they?
+
+- Nit: The Y axis in Figures 5 and 6 could be human words, "PAPI event counts".
+
+- Nit: the legend in Figures 5 and 6 do not match the symbols on the graph.  The colors match, but the symbols themselves appear to be unrelated.
+
+- Section 5: the first paragraph describes Figures 7 and 8 as "due to the stability of the results we chose not the clutter the graphs with standard deviation".  This appears to be an incorrect statement...?  There's additional markings on Figures 7 and 8 and *might* be standard deviation...?  (see below)
+
+- 5th paragraph of section 5: "...improved by a factor of magnitude..."  I think the authors meant "improved by an *order* of magnitude".
+
+- Please also state the datatype/size that was used for the test case used to generate Figures 7 and 8 (the operations and buffer sizes were cited, but not the datatype).
+
+- Same paragraph: I totally do not understand the comparison to memcpy.  It feels like the authors are trying to explain something important here, but I'm just not getting it.  Please re-write this paragraph/section to more clearly explain exactly what results are shown in Figures 7 and 8, and why.
+
+- I do not understand Figures 7 and 8.  What exactly is shown here?  Even zoomed in on my computer monitor (just in case my paper printout was inaccurate), I'm not sure what is being displayed.  Apparently, red is "no AVX" and purple is "AVX" (I still don't understand why memcpy is shown, so I'll leave that out of this discussion).  Why are there variable-height boxes shown in each column -- what do the height of these boxes represent?  There are several columns/buffer sizes where I see no purple.  Did AVX fail at those sizes?  I also see a both red and orange on the graph.  What is orange, and why is it mixed in with the red, and sometimes mixed in with the purple?  There are also both "+" signs and error-bars around at least some of the plotted boxes.  What exactly do those mean?  Sometimes there's multiple boxes at what I would assume should be a single plot point -- e.g., 1M buffer size in both Figures 7 and 8.  Why is this?  I *assume* that we're supposed to be seeing a!
+  trend line of purple/AVS with lower times than red/no AVX.  But these graphs are not clear at all, and potentially contradict the text (about having no standard deviation/error bars).  Please make these graphs more clear.
+
+- Section 6: the experimental setup says that the machines have Intel Xeon Platinum 8160 -- which AVX is that?
+
+- Section 6: the last paragraph states that synthetic datasets were used.  Are these standardized datasets?  Are there any metrics that would help the reader understand these datasets -- e.g., are all the images of the same size?  Or is there a representative average size of the input images?  ...?
+
+- The last sentence of section 6 in quite difficult to parse.  I *think* that the authors are trying to say that with more MPI processes, the fact that each one of them is simultaneously using AVX operations drives up the overall FLOPS.  Put differently, each MPI process is more efficient, so when you have more MPI processes, the overall application is more efficient (i.e., processes more images per second).  Regardless, that sentence should be re-written to be more clear.
+
+- Section 7: there is no such thing as MPI_LOCAL_REDUCE; I think the authors meant MPI_REDUCE_LOCAL.
+
+------
+
+Overall, this is good, solid work.  It needs to get published.
+
+Please note that the text above is intended in the spirit of constructive criticism.  I think that this paper has excellent potential, but text needs to be cleaned up a bit, and a few things need to be clarified (e.g., the graphs and some of the experimental results).  Hopefully, this should be relatively easy to do before the final submission deadline.
+
+In the spirit of honesty and transparency in the academic review process, I sign all of my reviews.  Please feel free to contact me about any part of this review.
+
+Jeff Squyres
+jsquyres@cisco.com
+
+
+
+----------------------- REVIEW 3 ---------------------
+SUBMISSION: 11
+TITLE: Using Advanced Vector Extensions AVX-512 for MPI Reduction
+AUTHORS: Dong Zhong, Qinglei Cao, George Bosilca and Jack Dongarra
+
+----------- Overall evaluation -----------
+SCORE: 3 (strong accept)
+----- TEXT:
+Paper Summary:
+The authors investigate usage of Intel AVX-512 intrinsics to perform MPI reduction operations in Open MPI.
+
+- Good explanation of the AVX-512 capabilities and how they are integrated into the MPI implementation.
+- Comprehensive evaluation includes tool-based instruction measurements, micro benchmarks, and real application evaluation.
+- The usage of AVX-512 is packaged nicely by MPI.
+
+Review Summary:
+This paper is a good presentation of how MPI take advantage of processor specific functionality, and provide it to the user in an easily digestible manner. The evaluation is detailed and well explained. Nice work.
+
+
+
+----------------------- REVIEW 4 ---------------------
+SUBMISSION: 11
+TITLE: Using Advanced Vector Extensions AVX-512 for MPI Reduction
+AUTHORS: Dong Zhong, Qinglei Cao, George Bosilca and Jack Dongarra
+
+----------- Overall evaluation -----------
+SCORE: 1 (weak accept)
+----- TEXT:
+This paper presents the work done to implement reduction operations
+in MPI by leveraging the new generation of vector instructions in
+Intel CPUs (AVX-512).  I found the paper interesting, but its focus
+might be a little bit too narrow. For instance, it would have been
+nice to include a future work section and explain/discuss if other parts
+on the implementation could benefit from this kind of mechanism
+(and which parts then).
+
+The graphs are not always easy to read and this point has to be
+improved. More generally, this paper must undergo a careful proof-reading
+because there are way too many sentences that don't read like english and that
+fail to convey the authors' intentions (see below).
+
+
+Suggestions and remarks:
+- I'm unsure that Figure 4 and the text eplaining it is very useful.
+- I suggest to give the whole code of the Duff's device: it would ease the reading
+- Please explain the names of the PAPI counters so that legends of Figures
+5 and 6 are more easily readable.
+- Figures 7 and 8 are not easy to read. Could present the results differently?
+
+
+Typos:
+* Section 1:
+- While ILP importance subsides DLP becomes
+a critical factor in improving the efficiency of microprocessors.
+=> this sentence is not very understandable. Please rephrase.
+- by using larger vector register => registers (?)
+- importanve => importance
+- Intel first version => Intel's first version
+- a reduction operations => operation
+- to synchronize updating the weights matrix => please rephrase
+- overall performance ofthe collective => of the collective
+- a more wide => a wider
+
+* Section 2:
+- 2.1: machine learning algorithm => algorithms (?)
+- 2.1: most of those work => these work (?)
+- 2.2: Jesper[39] => Traff[39] (Jesper is the author's first name)
+- 2.2: Michael[16] => Hofmann[16] (Michaal is the author's first name)
+- 2.2: all-reduce => allreduce (all instances in the paper)
+- 2.2: such as GPU => GPUs (or  a GPU)
+* Section 3:
+- 3.1: For SSE and AVX, programs will suffer from performance penalties
+once mix them => please rephrase
+- 3.1: There are a couple of weird characters in registers names, please
+correct this
+- 3.2: Without Intel intrinsic was supported => please rephrase
+- 3.2: The use of instrinsic => intrinsics (?)
+- 3.2: The cost of writing [...] is considerably less. => less than what?
+Some words are missing here.
+- 3.3: can be extended out the scope of reduction operation to general
+mathematics and logic operations. => please rephrase
+- 3.3: Traditional reduction operation performs element by element of
+the input buffers, which executes as a sequential operation or it is
+possible could be vectorized under particular circumstance or with a
+specific complier or constraints. => please rephrase
+- 3.3: full-fill => fulfill (in all instances)
+
+* Section 4:
+- PAPI is a portable and efficient API to access hardware performance
+monitoring registers found on most modern microprocessors. It is also
+a standard API for accessing hardware performance counters available
+on most modern microprocessors. => repetition
+- At the same time , for branching instructions, our optimization
+decreased  by 60X. => please rephrase
+
+* Section 5:
+- Our new implementation we use AVX-512 => please rephrase
+- We present to compare arithmetic SUM and logical BAND. => please rephrase
+- It should be noted [...] auto-vectorized code. => this sentence is not clear,
+please rephrase.
+- To be remarked => rephrase
+- the previous process, then it applies the reduction and then proceeds =>
+remove one of the "then"
+
+* References:
+There are a couple a references that needs fixing because some characters
+are not correct. Please check references #8, #18, #21, #27, #42
+
