@@ -17,17 +17,17 @@ Using Long Vector Extensions for MPI Reductions
 \section*{Statement}
 
 We investigate the impact of the vectorization of MPI reduction
-operations, and propose an implementation of predefined MPI reduction
-operations using vector intrinsics (AVX and SVE) to improve the
-time-to-solution of the predefined MPI reduction operations.
-With these optimizations, we achieve higher memory bandwidth and an increased
+operations, and propose to improve the
+time-to-solution of the predefined MPI reduction operations via an implementation of predefined MPI reduction
+operations using vector instruction sets (AVX and SVE).
+We have shown that these optimizations allow for an increased memory bandwidth and an increased
 efficiency for local computations, which directly benefit the overall cost of
 collective reductions and applications based on them.
 
 This paper is an extended version of the conference proceedings~\cite{avxeurpmpi2020}
 that considers not only the case of communication benchmarks, but also application benchmarks on different architectures.
 
-We investigated with the Large-scale Atomic/Molecular Massively Parallel Simulator (LAMMPS), which is a
+We investigated the Large-scale Atomic/Molecular Massively Parallel Simulator (LAMMPS) application, a
 molecular dynamics simulation tool from Sandia National Laboratories.
 It provides different benchmark datasets representing a range of simulation styles
 and computational expense for molecular-level interaction forces.
@@ -39,7 +39,7 @@ with novel instruction sets - Arm Scalable Vector Extension (SVE).
 Experiments conducted with novel processors Arm A64FX, show that SVE optimized implementation
 significantly reduce completion time for collective communication reductions.
 
-We tested AVX implementation with AMD processors in 4.2. We added section 6 with a
+In addition to Intel processors we have also tested AVX implementation on AMD processors in 4.2. We added section 6 with a
 HPC benchmark to further demonstrate the efficiency of our design.
 Also, we added Arm SVE based implementation in Section 3.2, 3.4, and experiment results in 4.3.
 
