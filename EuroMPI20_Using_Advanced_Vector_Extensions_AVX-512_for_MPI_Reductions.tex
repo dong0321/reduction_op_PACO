@@ -38,7 +38,7 @@
 \newcommand{\acle}[0]{\textsc{ACLE}\xspace}
 
 \newcommand{\imb}[0]{\textsc{IMB}\xspace}
-\newcommand{\allreduce}[0]{AllReduce\xspace}
+\newcommand{\allreduce}[0]{MPI_Allreduce\xspace}
 
 %\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08emT\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 
@@ -512,7 +512,7 @@ SSE/AVXs.
     \centering
     % trim={<left> <lower> <right> <upper>}
     \includegraphics[scale=.45]{avx-graph.pdf}
-    \caption{Integrate and automatically activate the AVX component into the \ompi build system}
+    \caption{Procedural flow for detection and automatically activate the AVX component into the \ompi build system}
     \label{fig:512flow}
 \end{figure}
 
@@ -524,9 +524,8 @@ This advanced operation module/code-snippet can easily be adapted to other compu
 
 Vector instructions can be integrated in applications in several manners:
 (a) automatic vectorization support provided by the compiler;
-(b) explicitly calling vector instructions from assembly or via intrinsic functions;
-(c) adapting intrinsic functions into programming models or languages
-for applications to use.
+(b) each application explicitly calls vector instructions from assembly or via intrinsic functions;
+(c) adapting intrinsic functions into programming models or languages for applications to use.
 %
 The first strategy by using auto-vectorization, relies entirely on the compiler capabilities, but is portable and
 ``future-proof", which means that it can adapt code to any
@@ -546,10 +545,11 @@ The second method allows more control over the very low-level
 instruction stream, but the use of intrinsics is time-consuming and
 error-prone for application programmers and users.
 %
-For this work, to integrate the use of AVX-512 features in the \ompi
-stack, we adopt the second approach -- we use intrinsics and
-compile flags to guide the compiler in the vectorization
-phase to maximize performance.
+For this work, to integrate the use of AVX-512 features in the widely used programming
+model \ompi with the third approach -- we choose to use intrinsics and
+compile flags to guide the compiler in the vectorization phase to maximize performance.
+We hide the implementation complications in the \ompi middleware, and therefore many
+applications benefit from it without dealing with low-level instructions.
 
 \begin{algorithm}[!ht]
 \caption{AVX based reduction algorithm}\label{fig:reducealgorithm}
@@ -559,39 +559,39 @@ phase to maximize performance.
 \textbf{\textit{count}} \Comment{Total number of elements for reduction operation}\\
 \textbf{\textit{in\_buf}} \Comment{Input buffer for reduction operation}\\
 \textbf{\textit{inout\_buf}} \Comment{Input and output buffer for reduction operation}\\
-\textbf{\textit{sizeof\_type}} \Comment{Number of bytes of the type of the in\_buf / inout\_buf}\\
+\textbf{\textit{sizeof\_type}} \Comment{Number of bytes of the type of the in\_buf and inout\_buf}\\
 
 \begin{algorithmic}[1]
-\Procedure{ReductionOp}{ $in\_buf, inout\_buf, count$ }
+\Procedure{ReductionOp}{ $in\_buf, inout\_buf, count, type$ }
 %\If {( $blocklen$ $\geqslant$ $svcntb$ )}
-  \State $types\_per\_step$ = $vector\_length (512)$ / ($8$ $\times$ $sizeof\_type$)
+  \State $types\_per\_step$ = $vector\_length $ / ($8$ $\times$ $sizeof\_type$)
   % \EndIf
   \State{\#pragma unroll}
-\For { $k \gets types\_per\_step $ to $ count$}
-  \State {\_mm512\_loadu\_si512 from $in\_buf$}
-  \State {\_mm512\_loadu\_si512 from $inout\_buf$}
+\For { $k \gets 0 $ to $ count$ with increment of $types\_per\_step$}
+  \State {\_mm512\_loadu\_si512 from $in\_buf+offset$}
+  \State {\_mm512\_loadu\_si512 from $inout\_buf+offset$}
   \State {\_mm512\_reduction\_op}
-  \State {\_mm512\_storeu\_si512 to $inout\_buf$}
-  \State {Update left\_over}
+  \State {\_mm512\_storeu\_si512 to $inout\_buf+offset$}
+  \State {Update left\_over and offset}
 \EndFor
 \If {( $left\_over$ $\neq$ $0$ )}
   \State Update $types\_per\_step >>= 1$
     \If {( $types\_per\_step$ $\leq$ $left\_over$)}
-    \State {\_mm256\_loadu\_si256 from $in\_buf$}
-    \State {\_mm256\_loadu\_si256 from $inout\_buf$}
+    \State {\_mm256\_loadu\_si256 from $in\_buf+offset$}
+    \State {\_mm256\_loadu\_si256 from $inout\_buf+offset$}
     \State {\_mm256\_reduction\_op}
-    \State {\_mm256\_storeu\_si256 to $inout\_buf$}
-    \State {Update left\_over}
+    \State {\_mm256\_storeu\_si256 to $inout\_buf+offset$}
+    \State {Update left\_over and offset}
     \EndIf
 \EndIf
 \If {( $left\_over$ $\neq$ $0$ )}
   \State Update $types\_per\_step >>= 1$
     \If {( $types\_per\_step$ $\leq$ $left\_over$)}
-    \State {\_mm\_llddqu\_si128 from $in\_buf$}
-    \State {\_mm\_llddqu\_si128 from $inout\_buf$}
+    \State {\_mm\_llddqu\_si128 from $in\_buf+offset$}
+    \State {\_mm\_llddqu\_si128 from $inout\_buf+offset$}
     \State {\_mm128\_reduction\_op}
-    \State {\_mm\_storeu\_si128 to $inout\_buf$}
-    \State {Update left\_over}
+    \State {\_mm\_storeu\_si128 to $inout\_buf+offset$}
+    \State {Update left\_over and offset}
     \EndIf
 \EndIf
 \If {($ left\_over$ $\neq$ $0$ )}
@@ -792,18 +792,18 @@ by the \mpi standard.
 \textbf{\textit{inout\_buf}} \Comment{Input and output buffer for reduction operation}\\
 
 \begin{algorithmic}[1]
-\Procedure{ReductionOp}{ $in\_buf, inout\_buf, count$ }
+\Procedure{ReductionOp}{ $in\_buf, inout\_buf, count, type$ }
 %\If {( $blocklen$ $\geqslant$ $svcntb$ )}
   \State{\#svcnt*: Count the number of 8,16,32,64-bit elements in a vector}
   \State $types\_per\_step$ = svcntb $\mid$ svcnth $\mid$ svcntw $\mid$ svcntd
   % \EndIf
   \State{\#pragma unroll}
-\For { $k \gets types\_per\_step $ to $ count$}
-  \State {svld1 from $in\_buf$}
-  \State {svld1 from $inout\_buf$}
-  \State {sv\#op\_sign\#size\_z}
-  \State {svst1 to $inout\_buf$}
-  \State {Update left\_over}
+\For { $k \gets 0 $ to $ count$ with increment of $types\_per\_step$}
+  \State {svld1 from $in\_buf+offset$}
+  \State {svld1 from $inout\_buf+offset$}
+  \State {sv\_reduction\_op}
+  \State {svst1 to $inout\_buf+offset$}
+  \State {Update left\_over and offset}
 \EndFor
 \If {($ left\_over$ $\neq$ $0$ )}
 %\tcp*{Duff's device}
@@ -1096,13 +1096,13 @@ This operation can be any reduction operation, such as a sum, max, or min.
 In other words, it reduces the target arrays in all processes
 to a single array and returns the result array to all processes.
 %
-Horovod uses a ring-allreduce approach, which is a bandwidth optimal~\cite{allreduce-optimal} algorithm if the tensors are large enough, but does not
+Horovod uses a ring \allreduce approach, which is a bandwidth optimal~\cite{allreduce-optimal} algorithm if the tensors are large enough, but does not
 work as efficiently for smaller tensors.
 Horovod can also use a Tensor Fusion - an algorithm that fuses tensors together
-before it calls ring-allreduce. The fusion method allocates a large fusion buffer and executes the
+before it calls ring \allreduce. The fusion method allocates a large fusion buffer and executes the
 \allreduce operation on the fusion buffer.
 %
-In the ring-allreduce algorithm, each of N nodes communicates with two of its
+In the ring \allreduce algorithm, each of N nodes communicates with two of its
 peers $2 * ($N - 1$)$ times. During this communication, a node sends and receives chunks of the data
 buffer. In the first $N - 1$ iterations, received values are added to the values in the node's buffer. In
 the second $N - 1$ iterations, after each process receives the data from the previous process, it
@@ -1132,7 +1132,11 @@ Comparing to default element-wise reduction
 implementations, with the increasing number of processes,
 our design shows increasing improvements, which start at 5.45\% and
 eventually rise to 12.38\% faster than default \ompi on 192 processes and 1536 processes, respectively.
-It can be observed that the performance benefit increases with more processes/nodes, because of the strong-scaling nature of the application, which translate into the more MPI processes participate in the reduction operation, the larger the data is.
+We intend to include both communication and computation in the measurement to show the performance
+benefit from our design to the application's overall completion time.
+It can be observed that the performance benefit increases with more processes/nodes,
+because of the strong-scaling nature of the application, which translate into the more
+MPI processes participate in the reduction operation, the larger the data is.
 Thus, the fact that each one of them is simultaneously using our AVXs optimized \ompi
 operations drives up the overall application performance.
 
