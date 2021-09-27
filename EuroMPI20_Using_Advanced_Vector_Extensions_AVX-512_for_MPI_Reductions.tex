@@ -1135,7 +1135,8 @@ eventually rise to 12.38\% faster than default \ompi on 192 processes and 1536 p
 We intend to include both communication and computation in the measurement to show the performance
 benefit from our design to the application's overall completion time.
 It can be observed that the performance benefit increases with more processes/nodes,
-because of the strong-scaling nature of the application, which translate into the more
+because in the experiments we set $batch\_size = 32$ which means 32 samples from the training
+dataset are used to calculate the gradient to update the weights. This translate into the more
 MPI processes participate in the reduction operation, the larger the data is.
 Thus, the fact that each one of them is simultaneously using our AVXs optimized \ompi
 operations drives up the overall application performance.
